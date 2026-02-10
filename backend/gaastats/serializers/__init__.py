@@ -212,3 +212,23 @@ class MatchStatsSerializer(serializers.Serializer):
     turnovers_lost = serializers.IntegerField(default=0)
     kickouts_won = serializers.IntegerField(default=0)
     kickouts_lost = serializers.IntegerField(default=0)
+
+
+# Alias for generic stats endpoint
+StatsSerializer = serializers.Serializer  # Placeholder - Stats endpoints use custom serializers
+
+__all__ = [
+    'ClubSerializer',
+    'UserProfileSerializer',
+    'PlayerSerializer',
+    'PlayerListSerializer',
+    'MatchParticipantSerializer',
+    'MatchEventSerializer',
+    'MatchScoreUpdateSerializer',
+    'MatchSerializer',
+    'MatchListSerializer',
+    'OAuthTokenSerializer',
+    'PlayerStatsSerializer',
+    'MatchStatsSerializer',
+    'StatsSerializer',
+]

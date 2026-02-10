@@ -3,7 +3,7 @@ Dashboard URL Configuration
 """
 
 from django.urls import path
-from . import views as dashboard_views
+from . import dashboard_views
 
 app_name = 'dashboard'
 

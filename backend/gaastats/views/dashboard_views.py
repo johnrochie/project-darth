@@ -7,7 +7,10 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.http import HttpResponse, JsonResponse
-from ..models import Club, User, UserProfile, Match, Player, MatchEvent
+from django.contrib.auth import get_user_model
+from ..models import Club, UserProfile, Match, Player, MatchEvent
+
+User = get_user_model()  # Import User from django.contrib.auth
 
 # Authentication wrappers
 def club_admin_required(view_func):
