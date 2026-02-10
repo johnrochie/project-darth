@@ -1,0 +1,215 @@
+{# Base template for GAA Stats Web Dashboard #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}GAA Stats{% endblock %} - {{ club_name }}</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --club-primary: #{{ club_colors.primary|default:'10B981' }};
+            --club-secondary: #{{ club_colors.secondary|default:'6B7280' }};
+            --club-accent: #{{ club_colors.accent|default:'F59E0B' }};
+        }
+
+        body {
+            background-color: #F3F4F6;
+        }
+
+        .club-header {
+            background: linear-gradient(135deg, var(--club-primary), var(--club-secondary));
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-link {
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            opacity: 0.8;
+        }
+
+        .nav-link.active {
+            font-weight: bold;
+            opacity: 1;
+            text-decoration: underline;
+            text-decoration-thickness: 2px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .match-row:hover {
+            background-color: #F9FAFB;
+        }
+
+        .live-indicator {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .btn-primary {
+            background-color: var(--club-primary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background-color 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background-color: white;
+            color: var(--club-primary);
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 2px solid var(--club-primary);
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--club-primary);
+            color: white;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-completed { background-color: #10B981; color: white; }
+        .status-in_progress { background-color: #F59E0B; color: white; }
+        .status-scheduled { background-color: #6B7280; color: white; }
+        .status-postponed { background-color: #EF6B6E; color: white; }
+        .status-cancelled { background-color: #EF4444; color: white; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        thead {
+            background-color: var(--club-primary);
+            color: white;
+        }
+
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        tbody tr:hover {
+            background-color: #F9FAFB;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+    </style>
+
+    {% block extra_css %}
+    {% endblock %}
+</head>
+<body class="min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="club-header text-white shadow-lg">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    {% if club_logo %}
+                    <img src="{{ club_logo }}" alt="{{ club_name }} Logo" class="h-12 w-12 rounded-full bg-white">
+                    {% else %}
+                    <div class="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
+                        {{ club_name|slice:":1"|upper }}
+                    </div>
+                    {% endif %}
+                    <h1 class="text-2xl font-bold">{{ club_name }}</h1>
+                </div>
+                <nav class="flex items-center space-x-6">
+                    <a href="{% url 'dashboard:home' %}" class="nav-link active">Dashboard</a>
+                    <a href="{% url 'dashboard:match_list' %}" class="nav-link">Matches</a>
+                    <a href="{% url 'dashboard:player_list' %}" class="nav-link">Players</a>
+                    <a href="{% url 'dashboard:reports_index' %}" class="nav-link">Reports</a>
+                    <a href="/admin/" class="nav-link">Admin</a>
+                    <form method="post" action="/auth/logout/" class="inline">
+                        <button type="submit" class="bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-sm">Logout ({{ user.email }})</button>
+                    </form>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 container mx-auto px-4 py-8">
+        {% block messages %}
+            {% if messages %}
+                <div class="mb-4">
+                    {% for message in messages %}
+                        <div class="px-4 py-3 rounded mb-2
+                            {% if message.tags == 'error' %}bg-red-100 text-red-700{% endif %}
+                            {% if message.tags == 'success' %}bg-green-100 text-green-700{% endif %}
+                            {% if message.tags == 'info' %}bg-blue-100 text-blue-700{% endif %}
+                            {% if message.tags == 'warning' %}bg-yellow-100 text-yellow-800{% endif %}
+                        ">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endblock %}
+
+        {% block mainContent %}
+        <div class="text-center py-12">
+            <h2 class="text-3xl font-bold text-gray-700 mb-4">Dashboard</h2>
+            <p class="text-gray-500">Select an option from the menu above</p>
+        </div>
+        {% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-4">
+        <div class="container mx-auto px-4 text-center text-sm">
+            <p>&copy; {% now "Y" %} {{ club_name }}. Powered by GAA Stats.</p>
+        </div>
+    </footer>
+
+    <!-- WebSocket Script (for real-time updates) -->
+    {% block extra_js %}
+    {% endblock %}
+</body>
+</html>

@@ -1,0 +1,362 @@
+{# Match Live - Real-Time Stats #}
+{% extends "base.html" %}
+
+{% block title %}Live Stats - {{ match.opposition }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .live-header {
+        background: linear-gradient(135deg, var(--club-primary), #059669);
+        transition: all 0.3s ease;
+        animation: pulse-bg 2s infinite;
+    }
+
+    @keyframes pulse-bg {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.95; }
+    }
+
+    .live-indicator {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #EF4444;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(1.2); }
+    }
+
+    .score-pulse {
+        animation: scorePulse 0.5s ease-out;
+    }
+
+    @keyframes scorePulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.2); }
+        100% { transform: scale(1); }
+    }
+
+    .event-row.new {
+        animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(-20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .event-timestamp {
+        font-family: monospace;
+        font-size: 12px;
+        color: #9CA3AF;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // WebSocket connection for real-time updates
+    const matchId = {{ match_id }};
+    const wsUrl = `ws://${window.location.host}/ws/match/${matchId}/`;
+
+    let ws = null;
+
+    function connectWebSocket() {
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = function() {
+            console.log('WebSocket connected');
+            updateConnectionStatus(true);
+
+            // Request initial match state
+            ws.send(JSON.stringify({
+                type: 'request_match_state'
+            }));
+        };
+
+        ws.onmessage = function(event) {
+            const message = JSON.parse(event.data);
+            handleMessage(message);
+        };
+
+        ws.onclose = function() {
+            console.log('WebSocket disconnected');
+            updateConnectionStatus(false);
+            
+            // Attempt reconnection after 5 seconds
+            setTimeout(connectWebSocket, 5000);
+        };
+
+        ws.onerror = function(error) {
+            console.error('WebSocket error:', error);
+            updateConnectionStatus(false);
+        };
+    }
+
+    function handleMessage(message) {
+        switch (message.type) {
+            case 'match_state':
+                updateMatchState(message.data);
+                break;
+            case 'score_update':
+                updateScoreDisplay(message.data);
+                break;
+            case 'event_created':
+                updateEventsList(message.data);
+                break;
+            case 'player_subbed':
+                // Handle substitution
+                showNotification(`${message.data.player_in || 'Player'} substituted in at ${message.data.minute}'`);
+                break;
+            case 'pong':
+                // Ping response, do nothing
+                break;
+            default:
+                console.log('Unknown message type:', message.type);
+        }
+    }
+
+    function updateConnectionStatus(connected) {
+        const indicator = document.getElementById('connectionStatus');
+        if (connected) {
+            indicator.className = 'text-green-500';
+            indicator.textContent = '● Connected';
+        } else {
+            indicator.className = 'text-red-500';
+            indicator.textContent = '● Disconnected';
+        }
+    }
+
+    function updateMatchState(state) {
+        // Update score display
+        updateScoreDisplay(state.score);
+
+        // Update events list
+        if (state.recent_events) {
+            updateEventsList(state.recent_events);
+        }
+
+        // Update starting lineup
+        if (state.starting_lineup) {
+            updateStartingLineup(state.starting_lineup);
+        }
+    }
+
+    function updateScoreDisplay(scoreData) {
+        const clubGoals = document.getElementById('clubGoals');
+        const clubPoint1 = document.getElementById('clubPoint1');
+        const clubPoint2 = document.getElementById('clubPoint2');
+        const clubTotal = document.getElementById('clubTotal');
+        const oppositionGoals = document.getElementById('oppositionGoals');
+        const oppositionTotal = document.getElementById('oppositionTotal');
+
+        if (clubGoals) clubGoals.textContent = scoreData.club.goals;
+        if (clubPoint1) clubPoint1.textContent = scoreData.club.point_1;
+        if (clubPoint2) clubPoint2.textContent = scoreData.club.point_2;
+        if (clubTotal) clubTotal.textContent = scoreData.club.total;
+        if (oppositionGoals) oppositionGoals.textContent = scoreData.opposition.goals;
+        if (oppositionTotal) oppositionTotal.textContent = scoreData.opposition.total;
+
+        // Pulse animation on score change
+        clubTotal.classList.add('score-pulse');
+        setTimeout(() => clubTotal.classList.remove('score-pulse'), 500);
+    }
+
+    function updateEventsList(events) {
+        const eventsList = document.getElementById('eventsList');
+        eventsList.innerHTML = '';
+
+        for (const event of events) {
+            const row = document.createElement('div');
+            row.className = 'event-row new';
+            row.dataset.eventId = event.id;
+
+            let icon = '📊';
+            const eventType = event.event_type;
+            
+            if (eventType === 'score_goal') icon = '⚽️';
+            else if (eventType === 'score_1point') icon = '1️⃣';
+            else if (eventType === 'score_2point') icon = '2️⃣';
+            else if (eventType === 'tackle_won') icon = '✅';
+            else if (eventType === 'turnover_lost') icon = '💨';
+
+            row.innerHTML = `
+                <div class="flex justify-between items-center py-2 px-4 border-b border-gray-200">
+                    <div class="flex items-center space-x-4">
+                        <span class="text-2xl">${icon}</span>
+                        <div>
+                            <div class="font-semibold text-gray-700">
+                                ${event.player_name || 'Team'}
+                                <span class="text-gray-400 text-sm ml-2">
+                                    ${event.player_number ? '(' + event.player_number + ')' : ''}
+                                </span>
+                            </div>
+                            <div class="text-sm text-gray-500">
+                                ${event.event_type.replace('score_', '').replace('_', ' ').title()} - at ${event.minute}'
+                            </div>
+                        </div>
+                    </div>
+                    <div class="event-timestamp">
+                        ${new Date(event.timestamp).toLocaleTimeString()}
+                    </div>
+                </div>
+            `;
+
+            eventsList.prepend(row);
+
+            // Remove 'new' class after 3 seconds
+            setTimeout(() => row.classList.remove('new'), 3000);
+        }
+    }
+
+    function updateStartingLineup(lineup) {
+        const lineupContainer = document.getElementById('startingLineup');
+        lineupContainer.innerHTML = '';
+
+        for (const participant of lineup) {
+            const div = document.createElement('div');
+            div.className = 'px-3 py-2 bg-gray-50 rounded text-sm mb-2';
+            div.innerHTML = `
+                <span class="font-semibold">#${participant.player_number}</span>
+                ${participant.player_name}
+            `;
+            lineupContainer.appendChild(div);
+        }
+    }
+
+    function showNotification(message) {
+        // Could implement toast notification system
+        console.log('Notification:', message);
+    }
+
+    // Initialize WebSocket connection
+    document.addEventListener('DOMContentLoaded', function() {
+        connectWebSocket();
+
+        // Send ping every 30 seconds to keep connection alive
+        setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+            }
+        }, 30000);
+    });
+</script>
+{% endblock %}
+
+{% block mainContent %}
+<div>
+    <!-- Back Button -->
+    <div class="mb-6">
+        <a href="{% url 'dashboard:match_detail' match.id %}" class="btn-secondary">
+            ← Back to Match Detail
+        </a>
+    </div>
+
+    <!-- Live Score Header -->
+    <div class="live-header text-white p-8 rounded-xl mb-8">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <div class="live-indicator"></div>
+                <span class="text-lg font-semibold">Live</span>
+                <span class="ml-2 opacity-75">vs {{ match.opposition }}</span>
+                <span class="ml-4 text-sm opacity-75">Minute: <span id="currentMinute">0</span></span>
+            </div>
+            <div id="connectionStatus" class="text-green-500">● Connecting...</div>
+        </div>
+
+        <div class="flex justify-center items-center gap-8 mt-4">
+            <!-- Club Score -->
+            <div class="text-center">
+                <div class="text-4xl font-bold"> {{ match.total_club_score }}</div>
+                <div class="text-sm opacity-75 mt-1">Club</div>
+                <div class="mt-2 text-sm opacity-75">
+                    {{ match.club_goals }}-{{ match.club_1point }}-{{ match.club_2point }}
+                </div>
+            </div>
+
+            <div class="text-4xl font-bold">VS</div>
+
+            <!-- Opposition Score -->
+            <div class="text-center">
+                <div class="text-4xl font-bold" id="oppositionTotal">
+                    {{ match.total_opposition_score }}
+                </div>
+                <div class="text-sm opacity-75 mt-1">Opposition</div>
+                <div class="mt-2 text-sm opacity-75" id="oppositionGoals">
+                    {{ match.opposition_goals }}-0-0
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Events Feed -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="p-4 border-b border-gray-200">
+                    <h2 class="text-lg font-bold text-gray-700">Live Events Feed</h2>
+                </div>
+                <div id="eventsList" class="p-4 max-h-96 overflow-y-auto">
+                    <div class="text-center text-gray-500 py-8">
+                        Waiting for events...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Starting Lineup -->
+        <div>
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="p-4 border-b border-gray-200">
+                    <h2 class="text-lg font-bold text-gray-700">Starting Lineup</h2>
+                </div>
+                <div id="startingLineup" class="p-4 overflow-y-auto">
+                    {# <div class="px-3 py-2 bg-gray-50 rounded text-sm mb-2">#10 John Smith</div> #}
+                    {# <div class="px-3 py-2 bg-gray-50 rounded text-sm mb-2">#11 Jane Doe</div> #}
+                    <p class="text-center text-gray-500 py-8">
+                        No lineup data yet
+                    </p>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="bg-white rounded-lg shadow-md mt-6">
+                <div class="p-4 border-b border-gray-200">
+                    <h2 class="text-lg font-bold text-gray-700">Match Stats</h2>
+                </div>
+                <div class="p-4 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Total Events</span>
+                    </div>
+                    <div class="font-semibold" id="totalEvents">-</div>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Goals</span>
+                </div>
+                <div class="font-semibold text-green-600" id="totalGoals">-</div>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Points</span>
+                </div>
+                <div class="font-semibold text-blue-600" id="totalPoints">-</div>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Shots</span>
+                </div>
+                <div class="font-semibold" id="totalShots">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

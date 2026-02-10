@@ -1,0 +1,121 @@
+{# Dashboard Home #}
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block mainContent %}
+<div>
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="stat-card">
+            <div class="text-gray-500 text-sm mb-2">Total Matches</div>
+            <div class="text-3xl font-bold text-green-600">{{ total_matches }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="text-gray-500 text-sm mb-2">Live Match</div>
+            <div class="text-2xl font-bold">
+                {% if live_match %}
+                    <span class="text-orange-500">vs {{ live_match.opposition }}</span>
+                    <div class="live-indicator">Live</div>
+                    <div class="text-lg font-semibold mt-2">
+                        {{ live_match.total_club_score }} - {{ live_match.total_opposition_score }}
+                    </div>
+                    <a href="{% url 'dashboard:match_live' live_match.id %}" class="block mt-4 btn-primary">
+                        View Live
+                    </a>
+                {% else %}
+                    <span class="text-gray-400">No live match</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="text-gray-500 text-sm mb-2">Total Goals</div>
+            <div class="text-3xl font-bold text-green-600">
+                {% if recent_matches %}{{ recent_matches|aggregate:"club_goals" }}{% else %}0{% endif %}
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="text-gray-500 text-sm mb-2">Total Points</div>
+            <div class="text-3xl font-bold text-green-600">
+                {% if recent_matches %}{{ recent_matches|aggregate:"club_1point" }}{% else %}0{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Matches -->
+    <h2 class="text-2xl font-bold text-gray-700 mb-4">Recent Matches</h2>
+    <div class="overflow-x-auto mb-12">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Opposition</th>
+                    <th>Venue</th>
+                    <th>Score</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for match in recent_matches|slice:":10" %}
+                <tr class="match-row">
+                    <td>{{ match.date|date:"d M Y" }}</td>
+                    <td>{{ match.opposition }}</td>
+                    <td>{{ match.venue|default:"-" }}</td>
+                    <td class="font-semibold text-green-600">
+                        {{ match.total_club_score }} - {{ match.total_opposition_score }}
+                    </td>
+                    <td>
+                        <span class="status-badge status-{{ match.status }}">
+                            {{ match.status|replace:"_":" "|title }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{% url 'dashboard:match_detail' match.id %}" class="btn-secondary btn-sm">
+                            View Details
+                        </a>
+                        {% if match.status == 'in_progress' %}
+                        <a href="{% url 'dashboard:match_live' match.id %}" class="btn-primary btn-sm" style="margin-left: 8px;">
+                            Live Stats
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-gray-500 py-8">
+                        No matches yet. Create your first match!
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Quick Actions -->
+    <h2 class="text-2xl font-bold text-gray-700 mb-4">Quick Actions</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white rounded-lg p-6 shadow-md">
+            <h3 class="text-lg font-bold text-gray-700 mb-3">📊 Generate Reports</h3>
+            <p class="text-gray-500 mb-4">Download detailed PDF and Excel reports</p>
+            <a href="{% url 'dashboard:reports_index' %}" class="btn-primary">
+                Go to Reports
+            </a>
+        </div>
+        <div class="bg-white rounded-lg p-6 shadow-md">
+            <h3 class="text-lg font-bold text-gray-700 mb-3">👥 Manage Squad</h3>
+            <p class="text-gray-500 mb-4">Add players, track injuries, manage availability</p>
+            <a href="{% url 'dashboard:player_list' %}" class="btn-primary">
+                View Squad
+            </a>
+        </div>
+        <div class="bg-white rounded-lg p-6 shadow-md">
+            <h3 class="text-lg font-bold text-gray-700 mb-3">🏈 View Match History</h3>
+            <p class="text-gray-500 mb-4">Browse past matches and detailed stats</p>
+            <a href="{% url 'dashboard:match_list' %}" class="btn-primary">
+                View All Matches
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

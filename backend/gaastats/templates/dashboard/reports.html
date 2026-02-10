@@ -1,0 +1,118 @@
+{# Reports Index #}
+{% extends "base.html" %}
+
+{% block title %}Reports{% endblock %}
+
+{% block mainContent %}
+<div>
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-700">Reports</h1>
+        <a href="{% url 'dashboard:home' %}" class="btn-secondary">
+            ← Back to Dashboard
+        </a>
+    </div>
+
+    <p class="text-gray-500 mb-8">Generate detailed PDF and Excel reports for matches, players, and entire seasons.</p>
+
+    <!-- Match Reports -->
+    <div class="mb-12">
+        <h2 class="text-2xl font-bold text-gray-700 mb-4">Match Reports</h2>
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <form method="post" action="{% url 'dashboard:report_match_pdf' 1 %}">
+                {% csrf_token %}
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Select Match</label>
+                    <select 
+                        name="match_id" 
+                        id="matchSelect"
+                        required
+                        class="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                        <option value="">-- Select a Match --</option>
+                        {% for match in matches %}
+                        <option value="{{ match.id }}">
+                            {{ match.opposition }} ({{ match.date|date:"d M Y" }}) - {{ match.total_club_score }}-{{ match.total_opposition_score }}
+                        </option>
+                        {% empty %}
+                        <option value="" disabled>-- No matches yet --</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="flex gap-4">
+                    <button type="submit" class="btn-primary"
+                        onclick="return matchSelect.value !== '';">
+                        Download PDF Report
+                    </button>
+                    <form method="post" action="{% url 'dashboard:report_match_excel' 1 %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="match_id" id="match_id" value="-" />
+                        <button type="submit" class="btn-secondary"
+                                onclick="return document.getElementById('matchSelect').value !== '' && (document.getElementById('match_id').value = document.getElementById('matchSelect').value, true);"
+                                disabled>
+                            Download Excel Report
+                        </button>
+                    </form>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Player Reports -->
+    <div class="mb-12">
+        <h2 class="text-2xl font-bold text-gray-700 mb-4">Player Reports</h2>
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <form method="post" action="{% url 'dashboard:report_player_pdf' 1 %}">
+                {% csrf_token %}
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Select Player</label>
+                    <select 
+                        name="player_id" 
+                        required
+                        class="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                        <option value="">-- Select a Player --</option>
+                        {% for player in players|sort:"number" %}
+                        <option value="{{ player.id }}">
+                            #{{ player.number|default:"?" }} {{ player.name }}
+                        </option>
+                        {% empty %}
+                        <option value="" disabled>-- No players found --</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="flex gap-4">
+                    <button type="submit" class="btn-primary">
+                        Download PDF Report
+                    </button>
+                    <form method="post" action="{% url 'dashboard:report_player_excel' 1 %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-secondary">
+                            Download Excel Report
+                        </button>
+                    </form>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Season Reports -->
+    <div>
+        <h2 class="text-2xl font-bold text-gray-700 mb-4">Season Reports</h2>
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <p class="text-gray-500 mb-4">Generate a comprehensive Excel report for the entire season including all matches and player statistics.</p>
+
+            <form method="post" action="{% url 'dashboard:report_season_excel' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn-primary"
+                        style="background-color: var(--club-secondary); border-color: var(--club-secondary);">
+                    Download Season Report (Excel)
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
