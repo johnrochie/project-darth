@@ -48,7 +48,7 @@ services:
     environment:
       DJANGO_SECRET_KEY: ${SECRET_KEY:-django-insecure-change-this-in-production}
       DEBUG: "False"
-      ALLOWED_HOSTS: .gaastats.ie,127.0.0.1
+      ALLOWED_HOSTS: .gaastats.ie,127.0.0.1,localhost
       DB_NAME: gaastats
       DB_USER: postgres
       DB_PASSWORD: postgres

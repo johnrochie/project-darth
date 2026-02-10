@@ -459,7 +459,7 @@ class TestAdvancedMatchEventAPI:
         response2 = api_client.post(f'/api/matches/{match.id}/events/', {
             "player": player2.id,
             "event_type": "goal",
-            " minute: 30
+            "minute": 30
         })
         # Should fail with 403 Forbidden (player not from home club)
         assert response2.status_code in [status.HTTP_400_BAD_REQUEST, status.HTTP_403_FORBIDDEN]
@@ -496,7 +496,7 @@ class TestAdvancedMatchEventAPI:
         player = Player.objects.create(club=admin_club, first_name="Delete", last_name="Me", jersey_number=99)
         match = Match.objects.create(
             club=admin_club,
-            opponent=offense,
+            opponent=opponent,
             date="2024-06-15",
             competition="League",
             status="live"
